@@ -4,7 +4,8 @@
 #include "CCDirector.h"
 #include "SDL.h"
 #include "PDL.h"
-
+#include "CCKeypadDispatcher.h"
+#include "CCIMEDispatcher.h"
 /**
 @brief	This function change the PVRFrame show/hide setting in register.
 @param  bEnable If true show the PVRFrame window, otherwise hide.
@@ -52,8 +53,8 @@ int CCApplication::run()
         
         // without the inner while loop, input performance gets really laggy    	        
 		while ( SDL_PollEvent(&Event) ) {  
-//		CCLog("--- GOT NEW EVENT .... \n");
-		 	switch (Event.type) {
+//		  CCLog("--- GOT NEW EVENT .... \n");
+		 switch (Event.type) {
                 case SDL_KEYDOWN:
                     switch (Event.key.keysym.sym) {
                         case PDLK_GESTURE_BACK: /* also maps to ESC */
@@ -63,9 +64,19 @@ int CCApplication::run()
                                 PDL_Minimize();
                             }
                             break;
-
-                        default:
+                            case PDLK_GESTURE_DISMISS_KEYBOARD:{
+                                CCDirector::sharedDirector()->getOpenGLView()->setIMEKeyboardState(false);
+                            }
                             break;
+                            case SDLK_BACKSPACE: {
+                                CCIMEDispatcher::sharedDispatcher()->dispatchDeleteBackward();
+                            }
+                            break;
+                        default:
+                        {
+                            CCIMEDispatcher::sharedDispatcher()->dispatchInsertText(SDL_GetKeyName(Event.key.keysym.sym), 1); 
+                        }
+                        break;
                     }
                     break;
                 case SDL_MOUSEBUTTONDOWN:
@@ -87,13 +98,28 @@ int CCApplication::run()
                 case SDL_JOYAXISMOTION:
                 	CCAccelerometer::sharedAccelerometer()->update(joystick, time(NULL));
                 	break;
+                case SDL_ACTIVEEVENT:
+                      switch(Event.active.gain)
+                      {
+                        case 1:
+                            {
+                                applicationWillEnterForeground();
+                                break;
+                            }
+                        default:
+                        {
+                            applicationDidEnterBackground();
+                            break;
+                        }
+                      }
+                    break;
                 default:
                     break;
             }
-        }
-		// Get current time tick.
-        // If it's the time to draw next frame, draw it, else sleep a while.
-        CCDirector::sharedDirector()->mainLoop();
+        }   
+		   // Get current time tick.
+            // If it's the time to draw next frame, draw it, else sleep a while.
+            CCDirector::sharedDirector()->mainLoop();
      }
 
     return (int) 0;
@@ -106,6 +132,26 @@ void CCApplication::setAnimationInterval(double interval)
 
 CCApplication::Orientation CCApplication::setOrientation(Orientation orientation)
 {
+    if(orientation == kOrientationPortrait)
+    {   
+        PDL_SetOrientation(PDL_ORIENTATION_90 );    
+        return kOrientationLandscapeRight;
+    }
+    if(orientation == kOrientationLandscapeRight) 
+    {   
+        PDL_SetOrientation(PDL_ORIENTATION_0 ); 
+        return kOrientationPortrait;
+    }
+    if(orientation==kOrientationLandscapeLeft) 
+    {   
+        PDL_SetOrientation(PDL_ORIENTATION_180 );    
+        return kOrientationPortraitUpsideDown;
+    }
+    if(orientation==kOrientationPortraitUpsideDown) 
+    {
+        PDL_SetOrientation(PDL_ORIENTATION_270 );
+        return kOrientationLandscapeLeft;
+    }
 	return orientation;
 }
 
